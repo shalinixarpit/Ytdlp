@@ -8,7 +8,7 @@ API_HASH = environ.get("API_HASH", "9ef8c573a89dc23477b8709741e6b520")
 BOT_TOKEN = environ.get("BOT_TOKEN", "")
 
 OWNER = int(environ.get("OWNER", "1671836568"))
-CREDIT = environ.get("CREDIT", "αηηυ")
+CREDIT = environ.get("CREDIT", "𝝙 αηηυ 𝝙")
 
 TOTAL_USER = os.environ.get('TOTAL_USERS', '6059771769').split(',')
 TOTAL_USERS = [int(user_id) for user_id in TOTAL_USER]
@@ -20,6 +20,7 @@ if int(OWNER) not in AUTH_USERS:
   
 #WEBHOOK = True  # Don't change this
 #PORT = int(os.environ.get("PORT", 8080))  # Default to 8000 if not set
+
 
 
 
