@@ -1,9 +1,10 @@
 import os
 import re
 import yt_dlp
+import time
 from pyrogram import Client, filters
+from pyrogram.types import Message
 
-# ⬇ env se values uthayenge (Render me env vars set karoge)
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -12,61 +13,96 @@ DOWNLOAD_PATH = "./downloads/"
 os.makedirs(DOWNLOAD_PATH, exist_ok=True)
 
 app = Client(
-    "yt360_bot",
+    "ytbot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN
 )
 
-def convert_to_watch(url: str) -> str:
+def convert_to_watch(url):
     match = re.search(r"(?:embed/|v=|youtu\.be/)([A-Za-z0-9_-]{11})", url)
     if match:
-        vid = match.group(1)
-        return f"https://www.youtube.com/watch?v={vid}"
+        return f"https://www.youtube.com/watch?v={match.group(1)}"
     return url
 
-def download_360p(url: str):
-    ydl_opts = {
-    "format": "18",
-    "outtmpl": DOWNLOAD_PATH + "%(title)s.%(ext)s",
-    "quiet": True,
-    "merge_output_format": "mp4",
-    "cookies": "cookies.txt"  # 👈 NEW COOKIE SUPPORT
-}
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info)
-    return info, filename
+async def progress_bar(current, total, message: Message, start, status):
+    now = time.time()
+    speed = current / (now - start)
+    eta = (total - current) / speed if speed else 0
+    percent = current * 100 / total
 
-@app.on_message(filters.text & filters.private)
-def process(client, message):
-    raw_url = message.text.strip()
-    url = convert_to_watch(raw_url)
+    msg = (
+        f"**{status}…**\n"
+        f"📊 **{percent:.1f}%**\n"
+        f"⚡ Speed: `{speed/1024/1024:.2f} MB/s`\n"
+        f"⏳ ETA: `{eta:.1f}s`"
+    )
+    try:
+        await message.edit(msg)
+    except:
+        pass
+
+@app.on_message(filters.command("start"))
+async def start(client, message):
+    await message.reply(
+        "👋 Namaste!\n\n"
+        "📌 YouTube link bhejo (Watch / Embed / Short sab chalega)\n"
+        "🎥 Main 360p video download karke Telegram me upload karunga.\n"
+        "⚡ Speed + ETA bhi dikhega!\n"
+    )
+
+@app.on_message(filters.text & ~filters.command("start"))
+async def process(client, message):
+    url = message.text.strip()
+    url = convert_to_watch(url)
 
     if "youtu" not in url:
-        return message.reply("❌ Sirf YouTube link bhejo (watch/embed/youtu.be).")
+        return await message.reply("❌ Valid YouTube link bhejo!")
 
-    status = message.reply("📥 360p Downloading...")
+    status = await message.reply("🔍 Checking video...")
 
     try:
-        info, filename = download_360p(url)
-        title = info.get("title", "Video")
-        thumb = info.get("thumbnail")
+        start_time = time.time()
+        ydl_opts = {
+            "format": "18",
+            "outtmpl": DOWNLOAD_PATH + "%(title)s.%(ext)s",
+            "quiet": True,
+            "merge_output_format": "mp4",
+            "progress_hooks": [
+                lambda d: client.loop.create_task(
+                    progress_bar(
+                        d.get("downloaded_bytes", 0),
+                        d.get("total_bytes", 1),
+                        status,
+                        start_time,
+                        "📥 Downloading"
+                    )
+                ) if d["status"] == "downloading" else None
+            ],
+            "cookies": "cookies.txt"
+        }
 
-        status.edit("📤 Uploading Telegram...")
-        client.send_video(
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+
+        await status.edit("📤 Uploading…")
+
+        await client.send_video(
             message.chat.id,
             filename,
-            caption=title,
-            thumb=thumb
+            caption=info.get("title", "Video"),
+            progress=progress_bar,
+            progress_args=(status, time.time(), "📡 Uploading")
         )
 
         os.remove(filename)
-        status.delete()
+        await status.delete()
 
     except Exception as e:
-        status.edit(f"❌ Error: {e}")
+        await status.edit(f"❌ Error: `{str(e)}`")
+
 
 if __name__ == "__main__":
-    print("Starting bot…")
+    print("BOT STARTING…")
     app.run()
