@@ -4,9 +4,9 @@ import yt_dlp
 from pyrogram import Client, filters
 
 # ⬇ env se values uthayenge (Render me env vars set karoge)
-API_ID = int(os.getenv("API_ID", "27881923"))
-API_HASH = os.getenv("79abda5e46a51fc0dce1313f2548ce19")
-BOT_TOKEN = os.getenv("7834877953:AAFxCNHmyuoCT2y6IMm0zsxuGxQo8vsY0QM")
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 DOWNLOAD_PATH = "./downloads/"
 os.makedirs(DOWNLOAD_PATH, exist_ok=True)
