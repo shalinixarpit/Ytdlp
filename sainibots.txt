@@ -6,7 +6,6 @@ idna==3.4
 mutagen==1.46.0
 pyaes==1.6.1
 pycryptodome==3.18.0
-pyrogram
 pyrofork
 pyromod==1.5
 PySocks==1.7.1
@@ -17,7 +16,6 @@ soupsieve==2.4.1
 TgCrypto==1.2.5
 urllib3==2.0.3
 websockets==11.0.3
-yt-dlp==2025.02.19
 motor
 pytz
 aiohttp
@@ -49,3 +47,8 @@ google-auth-oauthlib
 google-auth-httplib2
 google-api-python-client
 ffmpeg-python
+pyrogram==2.0.106
+tgcrypto
+yt-dlp
+ffmpeg-python
+python-dotenv
