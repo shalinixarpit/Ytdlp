@@ -27,11 +27,12 @@ def convert_to_watch(url: str) -> str:
 
 def download_360p(url: str):
     ydl_opts = {
-        "format": "18",  # 360p (video+audio)
-        "outtmpl": DOWNLOAD_PATH + "%(title)s.%(ext)s",
-        "quiet": True,
-        "merge_output_format": "mp4",
-    }
+    "format": "18",
+    "outtmpl": DOWNLOAD_PATH + "%(title)s.%(ext)s",
+    "quiet": True,
+    "merge_output_format": "mp4",
+    "cookies": "cookies.txt"  # 👈 NEW COOKIE SUPPORT
+}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
