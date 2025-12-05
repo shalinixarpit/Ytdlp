@@ -37,7 +37,7 @@ import re
 import yt_dlp
 from pyrogram import Client, filters
 
-BOT_TOKEN = "PASTE_YOUR_TOKEN_HERE"  # <-- Token yahan daalo
+BOT_TOKEN = "7567559210:AAH8ZHbf_DCLr0dPe1gN8NvS-_EifLj7VIA"  # <-- Token yahan daalo
 DOWNLOAD_PATH = "./downloads/"
 os.makedirs(DOWNLOAD_PATH, exist_ok=True)
 
