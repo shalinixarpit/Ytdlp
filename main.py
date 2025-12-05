@@ -1,39 +1,5 @@
 import os
 import re
-import sys
-import m3u8
-import json
-import time
-import pytz
-import asyncio
-import requests
-import subprocess
-import urllib
-import urllib.parse
-import yt_dlp
-import tgcrypto
-import cloudscraper
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
-from base64 import b64encode, b64decode
-from logs import logging
-from bs4 import BeautifulSoup
-import saini as helper
-from utils import progress_bar
-from vars import API_ID, API_HASH, BOT_TOKEN, OWNER, CREDIT, AUTH_USERS, BOT, TOTAL_USERS
-from aiohttp import ClientSession
-from subprocess import getstatusoutput
-from pytube import YouTube
-from aiohttp import web
-import random
-from pyromod import listen
-from pyrogram import Client, filters
-from pyrogram.types import Message, InputMediaPhoto
-from pyrogram.errors import FloodWait, PeerIdInvalid, UserIsBlocked, InputUserDeactivated
-from pyrogram.errors.exceptions.bad_request_400 import StickerEmojiInvalid
-from pyrogram.types.messages_and_media import message
-import os
-import re
 import yt_dlp
 from pyrogram import Client, filters
 
