@@ -59,8 +59,10 @@ async def download(video_url, status):
 
         # 🛡️ Anti Robot Fix (Android Client)
         "extractor_args": {
-            "youtube": {"player_client": ["android"]}
-        },
+    "youtube": {
+        "player_client": ["web", "android"]
+    }
+},
 
         # Login cookies for certain videos
         "cookies": "cookies.txt",
