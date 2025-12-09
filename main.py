@@ -2,19 +2,15 @@ import os
 import re
 import yt_dlp
 import time
+import asyncio
 from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.errors import FloodWait
 
-# ======= Render Secure Cookies Load =======
-COOKIES_ENV = os.getenv("YOUTUBE_COOKIES")
-if COOKIES_ENV:
-    with open("cookies.txt", "w", encoding="utf-8") as f:
-        f.write(COOKIES_ENV)
-
-# ======= Telegram API =======
+# ===== Telegram API =====
 API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+API_HASH = os.getenv("API_HASH"))
+BOT_TOKEN = os.getenv("BOT_TOKEN"))
 
 DOWNLOAD_PATH = "./downloads/"
 os.makedirs(DOWNLOAD_PATH, exist_ok=True)
@@ -26,52 +22,52 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
+# =============== Helpers ==================
+download_active = {}
 
 def convert_to_watch(url: str):
+    live = re.search(r"youtube\.com/live/([A-Za-z0-9_-]{11})", url)
+    if live:
+        return f"https://www.youtube.com/watch?v={live.group(1)}"
+
     match = re.search(r"(?:embed/|v=|youtu\.be/)([A-Za-z0-9_-]{11})", url)
     return f"https://www.youtube.com/watch?v={match.group(1)}" if match else url
 
 
 async def progress_bar(current, total, message: Message, start, status):
+    if not download_active.get(message.chat.id, True):
+        return
+
     now = time.time()
+    percent = current * 100 / total
+    if int(percent) % 3 != 0:
+        return
+
     speed = current / (now - start)
     eta = (total - current) / speed if speed else 0
-    percent = current * 100 / total
 
     try:
         await message.edit(
             f"**{status}…**\n"
-            f"📊 **{percent:.1f}%**\n"
-            f"⚡ Speed: `{speed / 1024 / 1024:.2f} MB/s`\n"
-            f"⏳ ETA: `{eta:.1f}s`"
+            f"📊 {percent:.1f}%\n"
+            f"⚡ {speed/1024/1024:.2f} MB/s\n"
+            f"⏳ {eta:.1f}s"
         )
     except:
         pass
 
 
-async def download(video_url, status):
+async def download_custom(url, fmt, status, chat_id):
     start = time.time()
 
     ydl_opts = {
-        "format": "18",  # 360p mp4
+        "format": fmt,
         "outtmpl": DOWNLOAD_PATH + "%(title)s.%(ext)s",
         "merge_output_format": "mp4",
-
-        # 🛡️ Anti Robot Fix (Android Client)
-        "extractor_args": {
-    "youtube": {
-        "player_client": ["web", "android"]
-    }
-},
-
-        # Login cookies for certain videos
-        "cookies": "cookies.txt",
-
         "quiet": True,
-        "retries": 10,
-        "fragment_retries": 10,
+        "retries": 3,
+        "fragment_retries": 3,
         "nocheckcertificate": True,
-
         "progress_hooks": [
             lambda d: app.loop.create_task(
                 progress_bar(
@@ -85,52 +81,85 @@ async def download(video_url, status):
         ]
     }
 
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=True)
-        filename = ydl.prepare_filename(info)
+    if not download_active[chat_id]:
+        raise Exception("Canceled")
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+    except:
+        raise Exception("⚠️ Public video required — login/cookie not allowed")
 
     return info, filename
 
-
+# =============== Bot Commands ===============
 @app.on_message(filters.command("start"))
 async def start(_, message):
     await message.reply(
-        "👋 Namaste!\n\n"
-        "🎥 YouTube link bhejo, main 360p me download karke bhej dunga.\n"
-        "📡 Anti-Robot Enabled\n"
-        "🔑 Agar video private/age-restricted ho to `cookies.txt` jaruri hai!"
+        "👋 Hi! Send **public YouTube link** (even multiple links)\n"
+        "🎥 Choose quality → I’ll send video here\n\n"
+        "❌ Login-required videos not supported\n"
+        "🔄 You can **Cancel** download anytime!"
     )
 
 
 @app.on_message(filters.text & ~filters.command("start"))
 async def process(_, message):
-    url = convert_to_watch(message.text.strip())
+    urls = re.findall(r"(https?://\S+)", message.text)
+    if not urls:
+        return await message.reply("Please send valid video links")
 
-    if "youtu" not in url:
-        return await message.reply(
-            "❌ Valid YouTube link bhejo!\nExample: https://youtu.be/xyz"
-        )
+    for url in urls:
+        url = convert_to_watch(url)
 
-    status = await message.reply("🔍 Checking URL…")
+        buttons = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("360p", callback_data=f"18|{url}"),
+                InlineKeyboardButton("480p", callback_data=f"135|{url}"),
+                InlineKeyboardButton("720p", callback_data=f"22|{url}")
+            ],
+            [InlineKeyboardButton("❌ Cancel", callback_data=f"cancel|{url}")]
+        ])
+
+        await message.reply(f"🎞 Select quality:\n{url}", reply_markup=buttons)
+
+
+@app.on_callback_query()
+async def callback_query(client, cb):
+    chat_id = cb.message.chat.id
+    action, url = cb.data.split("|")
+
+    if action == "cancel":
+        download_active[chat_id] = False
+        await cb.answer("Canceled ❌")
+        return await cb.message.edit("🚫 Download canceled by user.")
+
+    fmt = action
+    download_active[chat_id] = True
+
+    status = await cb.message.reply("⏳ Starting…")
 
     try:
-        info, filename = await download(url, status)
-
+        info, filename = await download_custom(url, fmt, status, chat_id)
         await status.edit("📤 Uploading…")
-        await message.reply_video(
-            filename,
-            caption=info.get("title", "Video"),
-            progress=progress_bar,
-            progress_args=(status, time.time(), "📡 Uploading")
-        )
+
+        while True:
+            try:
+                await cb.message.reply_video(filename, caption=info.get("title"))
+                break
+            except FloodWait as e:
+                await asyncio.sleep(e.value)
 
         os.remove(filename)
         await status.delete()
 
     except Exception as e:
-        await status.edit(f"❌ Error:\n`{str(e)}`")
+        await status.edit(str(e))
+
+    await cb.answer()
 
 
 if __name__ == "__main__":
-    print("BOT STARTED ON RENDER…")
+    print("BOT STARTED")
     app.run()
